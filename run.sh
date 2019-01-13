@@ -1,0 +1,1 @@
+go run jedict.go -db mongodb://localhost:32769 -import ./JMdict.xml

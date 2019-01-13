@@ -1,6 +1,6 @@
 package dictionary
 
-import "github.com/jordwest/go-jedict/dictionary/storage"
+import "github.com/gilmoreg/go-jedict/dictionary/storage"
 
 type Dictionary struct {
 	reader storage.StorageReader
