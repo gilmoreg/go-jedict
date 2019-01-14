@@ -18,11 +18,7 @@ type Entry struct {
 	// List of meanings in English
 	Meanings []string
 
-	PositionOfSpeech string
-
-	Miscellaneous string
-
-	Dialect string
+	PartOfSpeech string
 }
 
 // Implement StorageReader to provide lookup capability on a dictionary storage

@@ -1,0 +1,1 @@
+mongodump --host localhost --port 32769 --db jedict --gzip --forceTableScan --archive > jedict.mongodb.archive

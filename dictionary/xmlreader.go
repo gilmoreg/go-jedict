@@ -7,7 +7,7 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/jordwest/go-jedict/dictionary/storage"
+	"github.com/gilmoreg/go-jedict/dictionary/storage"
 )
 
 type jmDictXmlDoc struct {
@@ -72,6 +72,10 @@ func (e *entry) convertToStorageEntry() storage.Entry {
 			continue
 		}
 		sEntry.Meanings = append(sEntry.Meanings, meaning.Content)
+	}
+
+	if e.PartOfSpeech != "" {
+		sEntry.PartOfSpeech = e.PartOfSpeech
 	}
 
 	return sEntry

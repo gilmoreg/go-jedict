@@ -21,9 +21,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/jordwest/go-jedict/dictionary"
-	"github.com/jordwest/go-jedict/dictionary/storage"
 	"strings"
+
+	"github.com/gilmoreg/go-jedict/dictionary"
+	"github.com/gilmoreg/go-jedict/dictionary/storage"
 )
 
 func printEntry(entry storage.Entry) {
@@ -38,7 +39,7 @@ func doImport(p storage.StorageWriter, xmlfile string) error {
 	// Print out the progress while the import is running
 	go func(progress chan float32) {
 		incomplete := true
-		var completion float32 = 0.0
+		var completion float32
 		for incomplete == true {
 			completion, incomplete = <-progress
 			fmt.Printf("\rImport progress: %.2f%%", completion*100)
@@ -46,7 +47,7 @@ func doImport(p storage.StorageWriter, xmlfile string) error {
 		fmt.Printf("\n")
 	}(progress)
 
-	err := dictionary.ReadXMLIntoStorage("./JMdict", p, progress)
+	err := dictionary.ReadXMLIntoStorage(xmlfile, p, progress)
 	if err != nil {
 		return err
 	}
@@ -60,20 +61,20 @@ func main() {
 	var reading string
 	var meaning string
 	var connectionString string
-	flag.StringVar(&connectionString, "db", "", "PostgreSQL connection string")
+	flag.StringVar(&connectionString, "db", "", "MongoDB connection string")
 	flag.StringVar(&xmlfile, "import", "", "JMdict file to import")
 	flag.StringVar(&kanji, "kanji", "", "Lookup word by kanji expression")
 	flag.StringVar(&reading, "reading", "", "Lookup word by reading")
 	flag.StringVar(&meaning, "meaning", "", "Lookup word by english meaning")
 	flag.Parse()
 
-	provider := storage.NewPostgresStorageProvider(connectionString)
+	provider := storage.NewMongoDBStorageProvider(connectionString)
 
 	// -import option for performing database import
 	if xmlfile != "" {
 		err := doImport(provider, xmlfile)
 		if err != nil {
-			fmt.Errorf("Error importing dictionary: %s\n", err)
+			fmt.Errorf("error importing dictionary: %s", err)
 			return
 		}
 	}
@@ -82,7 +83,7 @@ func main() {
 	if kanji != "" {
 		entry, err := provider.LookupKanji(kanji)
 		if err != nil {
-			fmt.Errorf("Error looking up kanji: %s\n", err)
+			fmt.Errorf("error looking up kanji: %s", err)
 			return
 		}
 		printEntry(entry)
