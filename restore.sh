@@ -1,1 +1,1 @@
-mongorestore --host <host> --port <port> --username <username> --password <password> --authenticationDatabase jedict --drop --gzip --archive jedict.mongodb.archive
+mongorestore --host <host> --port <port> --username <username> --password <password> --authenticationDatabase jedict --drop --gzip --archive=jedict.mongodb.archive
