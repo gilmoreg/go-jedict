@@ -30,10 +30,9 @@ import (
 func printEntry(entry storage.Entry) {
 	fmt.Printf("%s\n", strings.Join(entry.Kanji, " "))
 	fmt.Printf("%s\n----\n", strings.Join(entry.Readings, " "))
-	fmt.Printf("%s\n", strings.Join(entry.Meanings, ", "))
 }
 
-func doImport(p storage.StorageWriter, xmlfile string) error {
+func doImport(p storage.Writer, xmlfile string) error {
 	progress := make(chan float32)
 
 	// Print out the progress while the import is running

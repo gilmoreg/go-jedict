@@ -62,6 +62,7 @@ func (m MongoDBStorageProvider) LookupWord(string) (Entry, error) {
 
 // StoreEntry - Store an entry in the database.
 func (m MongoDBStorageProvider) StoreEntry(e Entry) error {
+	fmt.Println("Storing entry", e.Sequence)
 	_, err := m.collection.InsertOne(context.TODO(), e)
 	return err
 }

@@ -2,10 +2,11 @@ package storage
 
 import "errors"
 
-// Error indicating that a matching word could not be found.
+// ErrNotFound - Error indicating that a matching word could not be found.
 // Returned by Lookup(...) functions
-var NotFoundError = errors.New("Word not found")
+var ErrNotFound = errors.New("Word not found")
 
+// Entry -
 type Entry struct {
 	// Unique identifier per record
 	Sequence int
@@ -16,13 +17,17 @@ type Entry struct {
 	Readings []string
 
 	// List of meanings in English
-	Meanings []string
-
-	PartOfSpeech string
+	Meanings []Meaning
 }
 
-// Implement StorageReader to provide lookup capability on a dictionary storage
-type StorageReader interface {
+// Meaning -
+type Meaning struct {
+	PartOfSpeech string
+	Gloss        string
+}
+
+// Reader to provide lookup capability on a dictionary storage
+type Reader interface {
 	// Look up a word by kanji expression
 	LookupKanji(string) (Entry, error)
 
@@ -37,8 +42,8 @@ type StorageReader interface {
 	LookupWord(string) (Entry, error)
 }
 
-// Implement StorageWriter to provide dictionary persistence
-type StorageWriter interface {
+// Writer to provide dictionary persistence
+type Writer interface {
 	// Store an entry in the database. The entry is not necessarily saved until
 	// Commit() is called. The record is overwritten if one with the sequence
 	// number already exists
@@ -54,7 +59,8 @@ type StorageWriter interface {
 	Purge() error
 }
 
-type StorageProvider interface {
-	StorageReader
-	StorageWriter
+// Provider - interface
+type Provider interface {
+	Reader
+	Writer
 }

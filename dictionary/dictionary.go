@@ -2,27 +2,29 @@ package dictionary
 
 import "github.com/gilmoreg/go-jedict/dictionary/storage"
 
+// Dictionary -
 type Dictionary struct {
-	reader storage.StorageReader
+	reader storage.Reader
 }
 
-func NewDictionary(storageReader storage.StorageReader) (d Dictionary, err error) {
+// NewDictionary -
+func NewDictionary(storageReader storage.Reader) (d Dictionary, err error) {
 	d = Dictionary{}
 	d.reader = storageReader
 	return d, err
 }
 
-func (d Dictionary) FindOneByKanji(kanji string) (storage.Entry, error) {
-	return d.reader.LookupKanji(kanji)
-}
+// func (d Dictionary) FindOneByKanji(kanji string) (storage.Entry, error) {
+// 	return d.reader.LookupKanji(kanji)
+// }
 
-func (d Dictionary) FindOneByReading(reading string) (storage.Entry, error) {
-	return d.reader.LookupReading(reading)
-}
+// func (d Dictionary) FindOneByReading(reading string) (storage.Entry, error) {
+// 	return d.reader.LookupReading(reading)
+// }
 
-func (d Dictionary) FindOneByMeaning(meaning string) (storage.Entry, error) {
-	return d.reader.LookupMeaning(meaning)
-}
+// func (d Dictionary) FindOneByMeaning(meaning string) (storage.Entry, error) {
+// 	return d.reader.LookupMeaning(meaning)
+// }
 
 /* TODO:
 

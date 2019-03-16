@@ -6,11 +6,12 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/gilmoreg/go-jedict/dictionary/storage"
 )
 
-type jmDictXmlDoc struct {
+type jmDictXMLDoc struct {
 	JmDict jmDict `xml:"JMdict"`
 }
 
@@ -21,12 +22,10 @@ type jmDict struct {
 
 type entry struct {
 	XMLName xml.Name `xml:"entry"`
-	Ent_seq int      `xml:"ent_seq"`
-	K_ele   []k_ele  `xml:"k_ele"`
-	R_ele   []r_ele  `xml:"r_ele"`
-	//Sense   sense   `xml:"sense"`
-	Gloss        []gloss `xml:"sense>gloss"`
-	PartOfSpeech string  `xml:"sense>pos"`
+	EntSeq  int      `xml:"ent_seq"`
+	KEle    []kEle   `xml:"k_ele"`
+	REle    []rEle   `xml:"r_ele"`
+	Sense   []sense  `xml:"sense"`
 }
 
 type entity struct {
@@ -34,54 +33,61 @@ type entity struct {
 	content string   `xml:,innerxml`
 }
 
-type r_ele struct {
+type rEle struct {
 	Reb string `xml:"reb"`
 }
 
-type k_ele struct {
+type kEle struct {
 	Keb string `xml:"keb"`
 }
 
-type gloss struct {
-	Content string `xml:",chardata"`
-	Lang    string `xml:"lang,attr"`
+type sense struct {
+	Gloss []Gloss `xml:"gloss"`
+	Pos   string  `xml:"pos"`
 }
 
-type sense struct {
-	gloss []string `xml:"gloss"`
-	Pos   string   `xml:"pos"`
+// Gloss -
+type Gloss struct {
+	Content string `xml:",chardata"`
+	Lang    string `xml:"lang,attr"`
 }
 
 // Converts an XML read entity into an entry ready for storage
 func (e *entry) convertToStorageEntry() storage.Entry {
 	sEntry := storage.Entry{
-		Sequence: e.Ent_seq,
+		Sequence: e.EntSeq,
 		Kanji:    make([]string, 0),
 		Readings: make([]string, 0),
-		Meanings: make([]string, 0),
+		Meanings: make([]storage.Meaning, 0),
 	}
-	for _, reading := range e.R_ele {
+	for _, reading := range e.REle {
 		sEntry.Readings = append(sEntry.Readings, reading.Reb)
 	}
-	for _, kanji := range e.K_ele {
+	for _, kanji := range e.KEle {
 		sEntry.Kanji = append(sEntry.Kanji, kanji.Keb)
 	}
-	for _, meaning := range e.Gloss {
-		// For now, skip languages other than the default (english)
-		if meaning.Lang != "" {
-			continue
+	for _, sense := range e.Sense {
+		meanings := make([]string, 0)
+		for _, gloss := range sense.Gloss {
+			// For now, skip languages other than the default (english)
+			if gloss.Lang == "" {
+				meanings = append(meanings, gloss.Content)
+			}
 		}
-		sEntry.Meanings = append(sEntry.Meanings, meaning.Content)
-	}
-
-	if e.PartOfSpeech != "" {
-		sEntry.PartOfSpeech = e.PartOfSpeech
+		meaningsStr := strings.Join(meanings, ", ")
+		if sense.Pos != "" && meaningsStr != "" {
+			sEntry.Meanings = append(sEntry.Meanings, storage.Meaning{
+				PartOfSpeech: sense.Pos,
+				Gloss:        meaningsStr,
+			})
+		}
 	}
 
 	return sEntry
 }
 
-func ReadXMLIntoStorage(filename string, provider storage.StorageWriter, progress chan float32) error {
+// ReadXMLIntoStorage -
+func ReadXMLIntoStorage(filename string, provider storage.Writer, progress chan float32) error {
 	reader, err := os.Open(filename)
 	defer reader.Close()
 
@@ -90,7 +96,7 @@ func ReadXMLIntoStorage(filename string, provider storage.StorageWriter, progres
 		return err
 	}
 
-	var fileSize int64 = 0
+	var fileSize int64
 	if progress != nil {
 		fileInfo, err := reader.Stat()
 		if err != nil {
@@ -156,6 +162,7 @@ func ReadXMLIntoStorage(filename string, provider storage.StorageWriter, progres
 	return nil
 }
 
+// FindEntities -
 func FindEntities(d *xml.Directive) (map[string]string, error) {
 	directiveStr := string(*d)
 
