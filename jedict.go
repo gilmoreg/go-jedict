@@ -21,16 +21,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"strings"
 
 	"github.com/gilmoreg/go-jedict/dictionary"
 	"github.com/gilmoreg/go-jedict/dictionary/storage"
 )
-
-func printEntry(entry storage.Entry) {
-	fmt.Printf("%s\n", strings.Join(entry.Kanji, " "))
-	fmt.Printf("%s\n----\n", strings.Join(entry.Readings, " "))
-}
 
 func doImport(p storage.Writer, xmlfile string) error {
 	progress := make(chan float32)
@@ -56,15 +50,9 @@ func doImport(p storage.Writer, xmlfile string) error {
 func main() {
 	// Connect to the dictionary database using the provided connetion string
 	var xmlfile string
-	var kanji string
-	var reading string
-	var meaning string
 	var connectionString string
 	flag.StringVar(&connectionString, "db", "", "MongoDB connection string")
 	flag.StringVar(&xmlfile, "import", "", "JMdict file to import")
-	flag.StringVar(&kanji, "kanji", "", "Lookup word by kanji expression")
-	flag.StringVar(&reading, "reading", "", "Lookup word by reading")
-	flag.StringVar(&meaning, "meaning", "", "Lookup word by english meaning")
 	flag.Parse()
 
 	provider := storage.NewMongoDBStorageProvider(connectionString)
@@ -73,36 +61,8 @@ func main() {
 	if xmlfile != "" {
 		err := doImport(provider, xmlfile)
 		if err != nil {
-			fmt.Errorf("error importing dictionary: %s", err)
+			_ = fmt.Errorf("error importing dictionary: %s", err)
 			return
 		}
-	}
-
-	// -kanji option for looking up an expression by kanji
-	if kanji != "" {
-		entry, err := provider.LookupKanji(kanji)
-		if err != nil {
-			fmt.Errorf("error looking up kanji: %s", err)
-			return
-		}
-		printEntry(entry)
-	}
-
-	if reading != "" {
-		entry, err := provider.LookupReading(reading)
-		if err != nil {
-			fmt.Errorf("Error looking up reading: %s\n", err)
-			return
-		}
-		printEntry(entry)
-	}
-
-	if meaning != "" {
-		entry, err := provider.LookupMeaning(meaning)
-		if err != nil {
-			fmt.Errorf("Error looking up meaning: %s\n", err)
-			return
-		}
-		printEntry(entry)
 	}
 }

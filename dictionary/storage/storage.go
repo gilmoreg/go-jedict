@@ -22,8 +22,9 @@ type Entry struct {
 
 // Meaning -
 type Meaning struct {
-	PartOfSpeech string
+	PartOfSpeech []string
 	Gloss        string
+	Misc         []string
 }
 
 // Reader to provide lookup capability on a dictionary storage

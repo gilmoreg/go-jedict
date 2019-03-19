@@ -42,8 +42,9 @@ type kEle struct {
 }
 
 type sense struct {
-	Gloss []Gloss `xml:"gloss"`
-	Pos   string  `xml:"pos"`
+	Gloss []Gloss  `xml:"gloss"`
+	Pos   []string `xml:"pos"`
+	Misc  []string `xml:"misc"`
 }
 
 // Gloss -
@@ -66,7 +67,21 @@ func (e *entry) convertToStorageEntry() storage.Entry {
 	for _, kanji := range e.KEle {
 		sEntry.Kanji = append(sEntry.Kanji, kanji.Keb)
 	}
+
+	var currentPos string
+
 	for _, sense := range e.Sense {
+		pos := make([]string, 0)
+
+		if len(sense.Pos) > 0 {
+			for _, p := range sense.Pos {
+				pos = append(pos, p)
+				currentPos = p
+			}
+		} else {
+			pos = append(pos, currentPos)
+		}
+
 		meanings := make([]string, 0)
 		for _, gloss := range sense.Gloss {
 			// For now, skip languages other than the default (english)
@@ -75,10 +90,16 @@ func (e *entry) convertToStorageEntry() storage.Entry {
 			}
 		}
 		meaningsStr := strings.Join(meanings, ", ")
-		if sense.Pos != "" && meaningsStr != "" {
+		misc := make([]string, 0)
+		for _, m := range sense.Misc {
+			misc = append(misc, m)
+		}
+
+		if meaningsStr != "" {
 			sEntry.Meanings = append(sEntry.Meanings, storage.Meaning{
-				PartOfSpeech: sense.Pos,
+				PartOfSpeech: pos,
 				Gloss:        meaningsStr,
+				Misc:         misc,
 			})
 		}
 	}
@@ -94,16 +115,6 @@ func ReadXMLIntoStorage(filename string, provider storage.Writer, progress chan 
 	if err != nil {
 		fmt.Printf("Error opening dictionary xml file: %s\n", err)
 		return err
-	}
-
-	var fileSize int64
-	if progress != nil {
-		fileInfo, err := reader.Stat()
-		if err != nil {
-			return err
-		}
-		fileSize = fileInfo.Size()
-		defer close(progress)
 	}
 
 	decoder := xml.NewDecoder(reader)
@@ -129,36 +140,14 @@ func ReadXMLIntoStorage(filename string, provider storage.Writer, progress chan 
 			if startElement.Name.Local == "entry" {
 				decoder.DecodeElement(&entry, &startElement)
 			}
-			err = provider.StoreEntry(entry.convertToStorageEntry())
+			storeEntry := entry.convertToStorageEntry()
+			err = provider.StoreEntry(storeEntry)
 			if err != nil {
-				fmt.Errorf("Error storing entry: %s\n %+v", err, entry)
+				_ = fmt.Errorf("Error storing entry: %s\n %+v", err, entry)
 				return err
-			}
-			if provider.UncommittedEntries() >= 1000 {
-				if progress != nil {
-					currentLocation := decoder.InputOffset()
-					progress <- (float32(currentLocation) / float32(fileSize))
-				}
-				err = provider.Commit()
-				if err != nil {
-					fmt.Errorf("Error committing entries: %s", err)
-					return err
-				}
 			}
 		}
 	}
-
-	provider.Commit()
-	if err != nil {
-		fmt.Errorf("Error committing entries: %s", err)
-		return err
-	}
-
-	if progress != nil {
-		// 100% complete
-		progress <- 1.0
-	}
-
 	return nil
 }
 
@@ -213,8 +202,5 @@ func (dic *jmDict) ReadInto(reader io.Reader) error {
 			dic.Entries = append(dic.Entries, entry)
 		}
 	}
-
-	//return decoder.Decode(&dict)
 	return nil
-
 }
