@@ -1,9 +1,11 @@
 package dictionary
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
@@ -54,7 +56,7 @@ type Gloss struct {
 }
 
 // Converts an XML read entity into an entry ready for storage
-func (e *entry) convertToStorageEntry() storage.Entry {
+func (e *entry) convertToStorageEntry(edictMapping map[string]string) storage.Entry {
 	sEntry := storage.Entry{
 		Sequence: e.EntSeq,
 		Kanji:    make([]string, 0),
@@ -75,6 +77,10 @@ func (e *entry) convertToStorageEntry() storage.Entry {
 
 		if len(sense.Pos) > 0 {
 			for _, p := range sense.Pos {
+				p = strings.ToLower(p)
+				if val, ok := edictMapping[p]; ok {
+					p = val
+				}
 				pos = append(pos, p)
 				currentPos = p
 			}
@@ -117,6 +123,13 @@ func ReadXMLIntoStorage(filename string, provider storage.Writer, progress chan 
 		return err
 	}
 
+	edictMapFile, err := os.Open("./edictmap.json")
+	defer edictMapFile.Close()
+
+	var edictMapping map[string]string
+	edictRaw, _ := ioutil.ReadAll(edictMapFile)
+	json.Unmarshal(edictRaw, &edictMapping)
+
 	decoder := xml.NewDecoder(reader)
 	decoder.Strict = false
 
@@ -140,7 +153,7 @@ func ReadXMLIntoStorage(filename string, provider storage.Writer, progress chan 
 			if startElement.Name.Local == "entry" {
 				decoder.DecodeElement(&entry, &startElement)
 			}
-			storeEntry := entry.convertToStorageEntry()
+			storeEntry := entry.convertToStorageEntry(edictMapping)
 			err = provider.StoreEntry(storeEntry)
 			if err != nil {
 				_ = fmt.Errorf("Error storing entry: %s\n %+v", err, entry)
