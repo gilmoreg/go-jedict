@@ -25,6 +25,7 @@ type Meaning struct {
 	PartOfSpeech []string
 	Gloss        string
 	Misc         []string
+	IPA          string
 }
 
 // Reader to provide lookup capability on a dictionary storage

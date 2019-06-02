@@ -161,6 +161,7 @@ func ReadXMLIntoStorage(filename string, provider storage.Writer, progress chan 
 			}
 		}
 	}
+	provider.Commit()
 	return nil
 }
 
