@@ -1,4 +1,4 @@
-package main
+package ipa
 
 /*
 IPA Notes
@@ -38,9 +38,9 @@ import (
 	"regexp"
 )
 
-// IPAEntry from CSV file
+// Entry from CSV file
 // ex よ,1,1,6514,その他,間投,*,*,*,*,よ,ヨ,ヨ
-type IPAEntry struct {
+type Entry struct {
 	Surface string   `json:"surface"`
 	POS     []string `json:"pos"`
 	Base    string   `json:"base"`
@@ -50,19 +50,10 @@ type IPAEntry struct {
 
 var csvFile = regexp.MustCompile(`.+\.csv$`)
 
-func main() {
-	entries, err := LoadIPADictionary()
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("Number of entries read: %v, example: %v\n", len(entries), entries[200000])
-}
-
-// LoadIPADictionary -
-func LoadIPADictionary() ([]IPAEntry, error) {
+func loadIPADictionary() (map[string][]Entry, map[string][]Entry, error) {
 	var files []string
-	var ipaEntries = make([]IPAEntry, 0)
+	var entriesBySurface = make(map[string][]Entry, 0)
+	var entriesByReading = make(map[string][]Entry, 0)
 
 	err := filepath.Walk("data/ipa", func(path string, info os.FileInfo, err error) error {
 		if csvFile.MatchString(path) {
@@ -71,21 +62,31 @@ func LoadIPADictionary() ([]IPAEntry, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	for _, file := range files {
 		entries, err := loadIPACSV(file)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		ipaEntries = append(ipaEntries, entries...)
+		for _, entry := range entries {
+			if _, ok := entriesBySurface[entry.Surface]; !ok {
+				entriesBySurface[entry.Surface] = make([]Entry, 0)
+			}
+			entriesBySurface[entry.Surface] = append(entriesBySurface[entry.Surface], entry)
+
+			if _, ok := entriesByReading[entry.Reading]; !ok {
+				entriesByReading[entry.Reading] = make([]Entry, 0)
+			}
+			entriesByReading[entry.Reading] = append(entriesByReading[entry.Reading], entry)
+		}
 	}
 
-	return ipaEntries, nil
+	return entriesBySurface, entriesByReading, nil
 }
 
-func loadIPACSV(path string) ([]IPAEntry, error) {
+func loadIPACSV(path string) ([]Entry, error) {
 	fmt.Printf("Reading %s\n", path)
 	csvFile, err := os.Open(path)
 	defer csvFile.Close()
@@ -93,7 +94,7 @@ func loadIPACSV(path string) ([]IPAEntry, error) {
 		return nil, err
 	}
 	reader := csv.NewReader(bufio.NewReader(csvFile))
-	var entries []IPAEntry
+	var entries []Entry
 	for {
 		line, err := reader.Read()
 		if err == io.EOF {
@@ -101,7 +102,7 @@ func loadIPACSV(path string) ([]IPAEntry, error) {
 		} else if err != nil {
 			return nil, err
 		}
-		entries = append(entries, IPAEntry{
+		entries = append(entries, Entry{
 			Surface: line[0],
 			POS:     line[4:9],
 			Base:    line[10],

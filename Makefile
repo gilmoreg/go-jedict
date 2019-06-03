@@ -6,3 +6,6 @@ read:
 
 ipa:
 	go run tools/ipacsv.go
+
+search:
+	find ./data/ipa -type f -exec grep -H '$(q)' {} \;

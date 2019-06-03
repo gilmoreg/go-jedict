@@ -1,4 +1,4 @@
-package dictionary
+package jedict
 
 import (
 	"encoding/json"
@@ -9,8 +9,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-
-	"github.com/gilmoreg/go-jedict/dictionary/storage"
 )
 
 type jmDictXMLDoc struct {
@@ -55,19 +53,19 @@ type Gloss struct {
 	Lang    string `xml:"lang,attr"`
 }
 
-// Converts an XML read entity into an entry ready for storage
-func (e *entry) convertToStorageEntry(edictMapping map[string]string) storage.Entry {
-	sEntry := storage.Entry{
+// Converts an XML read entity into an Entry
+func (e *entry) convertToEntry(edictMapping map[string]string) Entry {
+	entry := Entry{
 		Sequence: e.EntSeq,
 		Kanji:    make([]string, 0),
 		Readings: make([]string, 0),
-		Meanings: make([]storage.Meaning, 0),
+		Meanings: make([]Meaning, 0),
 	}
 	for _, reading := range e.REle {
-		sEntry.Readings = append(sEntry.Readings, reading.Reb)
+		entry.Readings = append(entry.Readings, reading.Reb)
 	}
 	for _, kanji := range e.KEle {
-		sEntry.Kanji = append(sEntry.Kanji, kanji.Keb)
+		entry.Kanji = append(entry.Kanji, kanji.Keb)
 	}
 
 	var currentPos string
@@ -102,7 +100,7 @@ func (e *entry) convertToStorageEntry(edictMapping map[string]string) storage.En
 		}
 
 		if meaningsStr != "" {
-			sEntry.Meanings = append(sEntry.Meanings, storage.Meaning{
+			entry.Meanings = append(entry.Meanings, Meaning{
 				PartOfSpeech: pos,
 				Gloss:        meaningsStr,
 				Misc:         misc,
@@ -110,20 +108,20 @@ func (e *entry) convertToStorageEntry(edictMapping map[string]string) storage.En
 		}
 	}
 
-	return sEntry
+	return entry
 }
 
-// ReadXMLIntoStorage -
-func ReadXMLIntoStorage(filename string, provider storage.Writer, progress chan float32) error {
+func readXML(filename string) ([]Entry, error) {
+	fmt.Print("Loading JMDict...")
 	reader, err := os.Open(filename)
 	defer reader.Close()
 
 	if err != nil {
 		fmt.Printf("Error opening dictionary xml file: %s\n", err)
-		return err
+		return nil, err
 	}
 
-	edictMapFile, err := os.Open("./edictmap.json")
+	edictMapFile, err := os.Open("data/edictmap.json")
 	defer edictMapFile.Close()
 
 	var edictMapping map[string]string
@@ -132,6 +130,8 @@ func ReadXMLIntoStorage(filename string, provider storage.Writer, progress chan 
 
 	decoder := xml.NewDecoder(reader)
 	decoder.Strict = false
+
+	entries := make([]Entry, 0)
 
 	// Load directives
 	for {
@@ -142,7 +142,7 @@ func ReadXMLIntoStorage(filename string, provider storage.Writer, progress chan 
 		switch startElement := token.(type) {
 		case xml.Directive: // Reading an XML directive
 			directive := token.(xml.Directive)
-			results, err := FindEntities(&directive)
+			results, err := findEntities(&directive)
 			if err != nil {
 				fmt.Printf("Entities could not be found: %s\n", err)
 				continue
@@ -153,20 +153,19 @@ func ReadXMLIntoStorage(filename string, provider storage.Writer, progress chan 
 			if startElement.Name.Local == "entry" {
 				decoder.DecodeElement(&entry, &startElement)
 			}
-			storeEntry := entry.convertToStorageEntry(edictMapping)
-			err = provider.StoreEntry(storeEntry)
+			storeEntry := entry.convertToEntry(edictMapping)
+			entries = append(entries, storeEntry)
 			if err != nil {
 				_ = fmt.Errorf("Error storing entry: %s\n %+v", err, entry)
-				return err
+				return nil, err
 			}
 		}
 	}
-	provider.Commit()
-	return nil
+	fmt.Println("complete.")
+	return entries, nil
 }
 
-// FindEntities -
-func FindEntities(d *xml.Directive) (map[string]string, error) {
+func findEntities(d *xml.Directive) (map[string]string, error) {
 	directiveStr := string(*d)
 
 	// Go's xml package doesn't parse the DOCTYPE directive, we
@@ -201,12 +200,11 @@ func (dic *jmDict) ReadInto(reader io.Reader) error {
 		switch startElement := token.(type) {
 		case xml.Directive: // Reading an XML directive
 			directive := token.(xml.Directive)
-			results, err := FindEntities(&directive)
+			results, err := findEntities(&directive)
 			if err != nil {
 				fmt.Printf("Entities could not be found: %s\n", err)
 				continue
 			}
-			//fmt.Printf("Entities: %+v\n", results)
 			decoder.Entity = results
 		case xml.StartElement: // Reading an XML element
 			var entry entry
